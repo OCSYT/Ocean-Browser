@@ -6,7 +6,7 @@
 
 ; Variables
 #define MyAppName "Ocean-Browser"
-#define MyAppVersion "0.0.7"
+#define MyAppVersion "Alpha v8"
 #define MyAppVerName "{#MyAppName} {#MyAppVersion}"
 #define MyAppPublisher "BracketProto"
 #define MyAppURL "https://bracketproto.com"

@@ -1013,52 +1013,65 @@ namespace Browser
             foreach (Tab tab in Tabs)
             {
                 ExecuteScript($"AddTab('{tab.Id}');");
-            }
-            Tab selectedTab = (Tab)TabControl.SelectedTab?.Tag;
 
-            if (selectedTab != null)
-            {
-                ExecuteScript($"UpdateActiveTab('{selectedTab.Id}');");
+                string title;
+                string rawTitle;
 
+                try
+                {
+                    title = SanitizeString(tab.WebView.CoreWebView2.DocumentTitle);
+                    rawTitle = tab.WebView.CoreWebView2.DocumentTitle;
+                }
+                catch
+                {
+                    title = tab.Source;
+                    rawTitle = tab.Source;
+                }
+
+                if (string.IsNullOrEmpty(title) || title == "")
+                {
+                    title = tab.Source;
+                    rawTitle = tab.Source;
+                }
+
+                // Check if the current tab is the settings page
                 string settingsHtmlPath = Path.Combine(
                     Application.StartupPath,
                     "./src/settings/settings.html"
                 );
 
-                string title;
-                string rawtitle;
-                try
-                {
-                    title = SanitizeString(selectedTab.WebView.CoreWebView2.DocumentTitle);
-                    rawtitle = selectedTab.WebView.CoreWebView2.DocumentTitle;
-                }
-                catch
-                {
-                    title = selectedTab.Source;
-                    rawtitle = selectedTab.Source;
-                }
-                if (string.IsNullOrEmpty(title) || title == "")
-                {
-                    title = selectedTab.Source;
-                    rawtitle = selectedTab.Source;
-                }
-
-                Console.WriteLine("Info: " + selectedTab.Source + ", " +  selectedTab.Id + ", " + (selectedTab.WebView.CoreWebView2 == null));
-
-                    // Determine if the selected tab is the settings page
-                if (selectedTab.Source == new Uri(settingsHtmlPath).ToString())
+                if (tab.Source == new Uri(settingsHtmlPath).ToString())
                 {
                     ExecuteScript(
-                        $"UpdateTabTitle('{selectedTab.Id}', 'Settings', 'browser://settings');"
+                        $"UpdateTabTitle('{tab.Id}', 'Settings', 'browser://settings');"
                     );
                 }
                 else
                 {
-                    ExecuteScript($"UpdateTabTitle('{selectedTab.Id}', '{title}', '{selectedTab.Source}');");
+                    ExecuteScript($"UpdateTabTitle('{tab.Id}', '{title}', '{tab.Source}');");
                 }
-                this.Text = BrowserName + " - " + rawtitle;
+            }
+
+            // Update title of the main window to the title of the selected tab
+            Tab selectedTab = (Tab)TabControl.SelectedTab?.Tag;
+            if (selectedTab != null)
+            {
+                ExecuteScript($"UpdateActiveTab('{selectedTab.Id}');");
+
+                string selectedRawTitle;
+                try
+                {
+                    selectedRawTitle = selectedTab.WebView.CoreWebView2.DocumentTitle;
+                }
+                catch
+                {
+                    selectedRawTitle = selectedTab.Source;
+                }
+
+                this.Text = BrowserName + " - " + selectedRawTitle;
             }
         }
+
 
         public static string SanitizeString(string input)
         {
