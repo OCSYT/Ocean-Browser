@@ -134,15 +134,24 @@ function UpdateActiveTab(activeTabId) {
 
 // Updates the title of a specific tab and updates the URL input
 function UpdateTabTitle(tabId, newTitle, urlVal) {
-    console.log(newTitle);  
+    console.log(newTitle);
     const tabs = TabContainer.getElementsByClassName('Tab');
     const tabToUpdate = Array.from(tabs).find(tab => tab.id === tabId);
-    if (tabToUpdate) {  
+
+    if (tabToUpdate) {
         const titleElement = tabToUpdate.querySelector('span');
-        titleElement.textContent = newTitle.toString();
+        if (titleElement) {
+            titleElement.textContent = newTitle.toString();
+        }
+    }
+
+    const activeTab = Array.from(TabContainer.getElementsByClassName('Active'))
+        .find(tab => tab.id === tabId);
+    if (activeTab) {
         UrlInput.value = urlVal;
     }
 }
+
 
 // Keyboard event listeners for Enter, Back, and Forward
 document.addEventListener('keydown', (event) => {
