@@ -100,8 +100,8 @@ Source: "..\Browser\Build\OceanBrowser\net472\*"; DestDir: "{app}"; Flags: ignor
 Source: "inc\img\WindowsPackageManager.ico"; DestDir: "{app}"; DestName: "WinGet-Logo.ico"; Flags: ignoreversion
 
 [Icons]
-Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MainEXE}"; IconFilename: "inc\img\WindowsPackageManager.ico"
-Name: "{userstartmenu}\{#MyAppName}"; Filename: "{app}\{#MainEXE}"; IconFilename: "inc\img\WindowsPackageManager.ico"
+Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MainEXE}"; IconFilename: "{app}\WinGet-Logo.ico"; WorkingDir: "{app}"
+Name: "{userstartmenu}\{#MyAppName}"; Filename: "{app}\{#MainEXE}"; IconFilename: "{app}\WinGet-Logo.ico"; WorkingDir: "{app}"
 
 [Code]
 function PreferArm64Files: Boolean;
