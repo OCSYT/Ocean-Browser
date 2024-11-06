@@ -1,0 +1,70 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <OutputPath>Build\OceanBrowser</OutputPath>
+    <RootNamespace>OceanBrowser</RootNamespace>
+    <AssemblyName>OceanBrowser</AssemblyName>
+    <UseWPF>false</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Platforms>AnyCPU;ARM64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2849.39" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="GlobalKeyboardHook.cs" />
+    <Compile Include="PageManager.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PageManager.Designer.cs">
+      <DependentUpon>PageManager.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="PageManager.resx">
+      <DependentUpon>PageManager.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+    </Compile>
+    <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+  </ItemGroup>
+
+  <Target Name="AddSRCAfterBuild" AfterTargets="Build">
+    <Message Importance="high" Text="Copying src folder to $(TargetDir)..." />
+    <Exec Command="powershell -Command &quot;if (!(Test-Path '$(TargetDir)src')) { New-Item -ItemType Directory -Path '$(TargetDir)src' | Out-Null } ; Copy-Item -Recurse -Force -Path '$(ProjectDir)src\*' -Destination '$(TargetDir)src\'&quot;" />
+  </Target>
+
+  <Target Name="BuildInstaller" AfterTargets="AddSRCAfterBuild">
+    <Message Importance="high" Text="Creating installer from template..." />
+    <!--<Exec Command="powershell -Command &quot;if (!(Test-Path '$(TargetDir)src')) { New-Item -ItemType Directory -Path '$(TargetDir)src' } ; Copy-Item -Recurse -Force -Path '$(ProjectDir)src\' -Destination '$(TargetDir)src\'&quot;" />-->
+  </Target>
+
+  <!--<PropertyGroup>
+    <PostBuildEvent>powershell -Command "if (!(Test-Path '$(TargetDir)src')) { New-Item -ItemType Directory -Path '$(TargetDir)src' } ; Copy-Item -Recurse -Force -Path '$(ProjectDir)src' -Destination '$(TargetDir)src'"</PostBuildEvent>
+  </PropertyGroup>-->
+
+</Project>

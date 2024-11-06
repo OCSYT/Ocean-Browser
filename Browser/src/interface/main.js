@@ -187,11 +187,13 @@ window.chrome.webview.addEventListener('message', (event) => {
 
 
 
-function SetDefault(DefaultEngine){
+function SetDefault(DefaultEngine, OpenDefault){
     console.log("Setting Default: " + DefaultEngine);
     if(DefaultEngine == "" || DefaultEngine == null){
         DefaultEngine = "google";
     }
     window.chrome.webview.postMessage(`searchengine:${DefaultEngine}`);
-    window.chrome.webview.postMessage(`newdefault:`);
+    if(OpenDefault){
+        window.chrome.webview.postMessage(`newdefault:`);
+    }
 }

@@ -1,0 +1,102 @@
+/* Basic reset for margin and padding */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, Arial, sans-serif; /* Included Arial */
+    background-color: #0c0c0e; /* Dark background */
+    color: #f0f0f0; /* Light text color */
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+
+/* Heading styles */
+h1 {
+    color: #00bcd4; /* Cyan for headings */
+    font-size: 24px; /* Example font size for headings */
+    margin: 10px 0; /* Margin for spacing */
+}
+
+/* Search History List styles */
+#SearchHistoryList {
+    list-style-type: none;
+    padding: 0;
+}
+
+#SearchHistoryList li {
+    padding: 8px;
+    border-bottom: 1px solid #2a2a30; /* Darker border for list items */
+    color: #f0f0f0; /* Light text color for list items */
+}
+
+/* Button styles */
+button {
+    background-color: #00bcd4; /* Cyan button background */
+    color: #f0f0f0; /* Light text color */
+    border: none;
+    border-radius: 8px;
+    padding: 10px; /* Adjusted padding for better appearance */
+    font-size: 16px; /* Font size for buttons */
+    margin: 10px 0;
+    transition: background-color 0.3s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+}
+
+button:hover {
+    background-color: #0097a7; /* Darker cyan on hover */
+}
+
+/* Input styles */
+input[type="text"] {
+    flex-grow: 1;
+    padding: 8px;
+    margin: 0 5px;
+    border: 2px solid #00bcd4; /* Cyan border */
+    border-radius: 8px;
+    font-size: 14px;
+    background-color: #2a2a30; /* Dark background for input */
+    color: #f0f0f0; /* Light text color */
+}
+
+/* Placeholder styles */
+input::placeholder {
+    color: #888; /* Placeholder color */
+}
+
+/* Thin Scrollbar styles */
+::-webkit-scrollbar {
+    width: 8px; /* Set the scrollbar width */
+    background-color: #1f1f23; /* Background color of the scrollbar track */
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #00bcd4; /* Color of the scrollbar handle */
+    border-radius: 4px; /* Rounded corners for the scrollbar handle */
+    transition: background-color 0.3s; /* Smooth transition for hover effect */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #0097a7; /* Darker cyan on hover */
+}
+
+::-webkit-scrollbar-track {
+    background-color: #2a2a30; /* Background color of the scrollbar track */
+    border-radius: 4px; /* Rounded corners for the track */
+}
+
+/* Firefox scrollbar styles */
+html {
+    scrollbar-width: thin; /* Makes the scrollbar thinner */
+    scrollbar-color: #00bcd4 #2a2a30; /* Set the color for the scrollbar thumb and track */
+}
+#SearchEngineList{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
