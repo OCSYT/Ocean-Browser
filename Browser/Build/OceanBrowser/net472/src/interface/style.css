@@ -3,6 +3,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    user-select: none; 
 }
 
 /* Body styles */
@@ -109,6 +110,7 @@ input[type="text"] {
     font-size: 14px;
     background-color: #2a2a30;
     color: #f0f0f0;
+    user-select: text;
 }
 
 /* Placeholder styles */

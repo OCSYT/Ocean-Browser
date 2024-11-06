@@ -32,7 +32,7 @@ function UpdateSearchHistory(historyJson) {
 
 function SearchEngineButtons() {
     const EngineList = document.getElementById("SearchEngineList");
-    let Engines = ["google", "brave", "bing", "duckduckgo", "yahoo"];
+    let Engines = ["brave", "google", "bing", "duckduckgo", "yahoo"];
     Engines.forEach(engine => {
         const button = document.createElement("button");
         button.innerText = engine.charAt(0).toUpperCase() + engine.slice(1);

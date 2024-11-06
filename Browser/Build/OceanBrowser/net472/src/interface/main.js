@@ -6,9 +6,10 @@ const BackButton = document.getElementById('BackButton');
 const ForwardButton = document.getElementById('ForwardButton');
 const SettingsButton = document.getElementById('SettingsButton');
 const ReloadButton = document.getElementById('ReloadButton');
-const BookmarkContainer = document.getElementById('BookmarkContainer'); 
+const BookmarkContainer = document.getElementById('BookmarkContainer');
 const AddBookmarkButton = document.getElementById('AddBookmarkButton');
 
+let activeTabIds = [];
 
 function CreateButton(innerText, className, onClick) {
     const button = document.createElement('button');
@@ -25,10 +26,9 @@ function CreateItem(container, className, title, id, isTab = true, url = '') {
     item.id = id;
     item.style.display = 'flex';
 
-    // Title element
     const titleElement = document.createElement('span');
     titleElement.className = 'Title';
-    titleElement.innerText = title.substring(0, 25);
+    titleElement.innerText = title;
     item.appendChild(titleElement);
 
     const button = CreateButton('X', isTab ? 'CloseButton' : 'RemoveButton', (event) => {
@@ -38,7 +38,6 @@ function CreateItem(container, className, title, id, isTab = true, url = '') {
         } else {
             HandleRemoveBookmark(url);
         }
-        item.remove();
     });
 
     item.appendChild(button);
@@ -93,14 +92,37 @@ function GetActiveTabId() {
     return activeTab ? activeTab.id : null;
 }
 
-function AddTab(title, tabId) {
-    CreateItem(TabContainer, 'Tab', title, tabId, true);
+// Adds a new tab, ensuring no duplicate IDs
+function AddTab(tabId) {
+    if (!activeTabIds.includes(tabId)) {
+        activeTabIds.push(tabId);
+        CreateItem(TabContainer, 'Tab', "", tabId, true);
+    }
 }
 
+// Removes tab both from the activeTabIds array and DOM
+function RemoveTab(tabId) {
+    const index = activeTabIds.indexOf(tabId);
+    if (index !== -1) {
+        activeTabIds.splice(index, 1);
+        const tabElement = document.getElementById(tabId);
+        if (tabElement) {
+            TabContainer.removeChild(tabElement);
+        }
+    }
+}
+
+// Removes tabs that are not in activeTabIds
 function ClearTabs() {
-    TabContainer.innerHTML = '';
+    const tabs = Array.from(TabContainer.children);
+    tabs.forEach(tab => {
+        if (!activeTabIds.includes(tab.id)) {
+            TabContainer.removeChild(tab);
+        }
+    });
 }
 
+// Updates the active tab by adding/removing the 'Active' class
 function UpdateActiveTab(activeTabId) {
     const tabs = TabContainer.getElementsByClassName('Tab');
     Array.from(tabs).forEach(tab => {
@@ -110,16 +132,19 @@ function UpdateActiveTab(activeTabId) {
     if (activeTab) activeTab.classList.add('Active');
 }
 
+// Updates the title of a specific tab and updates the URL input
 function UpdateTabTitle(tabId, newTitle, urlVal) {
+    console.log(newTitle);  
     const tabs = TabContainer.getElementsByClassName('Tab');
     const tabToUpdate = Array.from(tabs).find(tab => tab.id === tabId);
-    if (tabToUpdate) {
+    if (tabToUpdate) {  
         const titleElement = tabToUpdate.querySelector('span');
-        titleElement.textContent = newTitle.toString().substring(0, 25);
+        titleElement.textContent = newTitle.toString();
         UrlInput.value = urlVal;
     }
 }
 
+// Keyboard event listeners for Enter, Back, and Forward
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
         event.preventDefault();
@@ -137,11 +162,11 @@ document.addEventListener('mousedown', (event) => {
         ForwardButton.onclick();
     }
 });
-
 document.addEventListener('contextmenu', (event) => {
     event.preventDefault();
 });
 
+// Bookmark management functions
 function AddBookmark(bookmark) {
     CreateItem(BookmarkContainer, 'Bookmark', bookmark.Title, bookmark.Url, false, bookmark.Url);
 }
@@ -151,7 +176,7 @@ function ClearBookmarks() {
 }
 
 function AddBookmarks(bookmarksJson) {
-    const bookmarks = JSON.parse(bookmarksJson); 
+    const bookmarks = JSON.parse(bookmarksJson);
     ClearBookmarks();
     bookmarks.forEach(bookmark => {
         AddBookmark(bookmark);
@@ -180,20 +205,18 @@ AddBookmarkButton.onclick = HandleAddBookmark;
 window.chrome.webview.addEventListener('message', (event) => {
     const message = event.data;
     if (message.startsWith('AddBookmarks:')) {
-        const bookmarksJson = message.substring(13); // Get the JSON string
+        const bookmarksJson = message.substring(13);
         AddBookmarks(bookmarksJson);
     }
 });
 
-
-
-function SetDefault(DefaultEngine, OpenDefault){
+function SetDefault(DefaultEngine, OpenDefault) {
     console.log("Setting Default: " + DefaultEngine);
-    if(DefaultEngine == "" || DefaultEngine == null){
-        DefaultEngine = "google";
+    if (!DefaultEngine) {
+        DefaultEngine = "brave";
     }
     window.chrome.webview.postMessage(`searchengine:${DefaultEngine}`);
-    if(OpenDefault){
+    if (OpenDefault) {
         window.chrome.webview.postMessage(`newdefault:`);
     }
 }

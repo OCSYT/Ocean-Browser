@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Policy;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -33,7 +34,6 @@ namespace Browser
 
         public class Tab
         {
-            public string Title { get; set; }
             public string Id { get; set; }
             public string Source { get; set; }
             public WebView2 WebView { get; set; }
@@ -75,6 +75,27 @@ namespace Browser
         private static string AppDataFolder =>
             Path.Combine(Application.LocalUserAppDataPath, "OceanBrowser");
         private static string HistoryFilePath => Path.Combine(AppDataFolder, "history.txt");
+
+
+        private string PluginFolder = Path.Combine(AppDataFolder, "Plugins");
+        private List<string> Plugins = new List<string>();    
+        public void LoadPluginJsFiles()
+        {
+            List<string> jsFiles = new List<string>();
+
+            if (Directory.Exists(PluginFolder))
+            {
+                string[] jsFilePaths = Directory.GetFiles(PluginFolder, "*.js", SearchOption.AllDirectories);
+                jsFiles.AddRange(jsFilePaths);
+            }
+            else
+            {
+                Directory.CreateDirectory(PluginFolder);
+            }
+
+            Plugins = jsFiles;
+        }
+
 
         // Bookmarks
         private void AddBookmark(string title, string url)
@@ -154,7 +175,7 @@ namespace Browser
             if (TabControl.SelectedTab != null)
             {
                 Tab selectedTab = (Tab)TabControl.SelectedTab.Tag;
-                string title = selectedTab.Title;
+                string title = this.Text.Replace(BrowserName + " - ", "");
                 string url = selectedTab.Source;
                 AddBookmark(title, url);
                 SaveBookmarks();
@@ -236,6 +257,7 @@ namespace Browser
             _globalKeyboardHook.Hook();
 
             // Load settings, search history, and bookmarks
+            LoadPluginJsFiles();
             LoadSettings();
             LoadSearchHistory();
             LoadBookmarks();
@@ -295,6 +317,7 @@ namespace Browser
             ShowBookmarks();
         }
 
+
         private bool IsApplicationFocused()
         {
             IntPtr activeWindow = GetForegroundWindow();
@@ -305,6 +328,7 @@ namespace Browser
         private bool ControlPressed = false;
         private bool NewTabRegistered = false;
         private bool CloseTabRegistered = false;
+        private bool HistoryTabRegistered = false; // New variable for Control + H
 
         private void InputManagerReleased(object sender, Keys key)
         {
@@ -319,6 +343,10 @@ namespace Browser
             if (key == Keys.N)
             {
                 NewTabRegistered = false;
+            }
+            if (key == Keys.H)
+            {
+                HistoryTabRegistered = false;
             }
         }
 
@@ -346,10 +374,16 @@ namespace Browser
                         CloseTabRegistered = true;
                     }
                 }
+                else if (key == Keys.H && !HistoryTabRegistered)
+                {
+                    OpenSettingsDocument(true);
+                    HistoryTabRegistered = true;
+                }
             }
         }
 
-        private void InitializeTabControl()
+
+            private void InitializeTabControl()
         {
             TabControl = new TabControl
             {
@@ -414,6 +448,7 @@ namespace Browser
 
             // Handle the web message received event
             InterfaceWebView.WebMessageReceived += InterfaceWebView_WebMessageReceived;
+            InterfaceWebView.CoreWebView2.NewWindowRequested += InterfaceWebView_NavigationStarting;
 
             // Load the interface HTML file
             string htmlFilePath = Path.Combine(
@@ -671,6 +706,7 @@ namespace Browser
         {
             if (string.IsNullOrWhiteSpace(searchText))
                 return;
+
             if (searchText.Equals("browser://settings", StringComparison.OrdinalIgnoreCase))
             {
                 OpenSettingsDocument(false);
@@ -679,18 +715,29 @@ namespace Browser
 
             Uri uriResult;
             bool isValidUrl = Uri.TryCreate(searchText, UriKind.Absolute, out uriResult);
+            if (searchText.StartsWith("file://", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Uri.TryCreate(searchText, UriKind.Absolute, out uriResult) && File.Exists(uriResult.LocalPath))
+                {
+                    if (TabControl.SelectedTab != null)
+                    {
+                        Tab activeTab = (Tab)TabControl.SelectedTab.Tag;
+                        activeTab.WebView.Source = uriResult;
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("The specified file does not exist.");
+                }
+                return;
+            }
 
-            // Check if the searchText is a domain
+            // Check if the searchText is a domain (not a complete URL)
             if (IsDomain(searchText))
             {
-                string domainUrl = "https://" + searchText;
-                if (
-                    Uri.TryCreate(domainUrl, UriKind.Absolute, out uriResult)
-                    && (
-                        uriResult.Scheme == Uri.UriSchemeHttp
-                        || uriResult.Scheme == Uri.UriSchemeHttps
-                    )
-                )
+                string domainUrl = "https://" + searchText; // Add https:// if it's a domain
+                if (Uri.TryCreate(domainUrl, UriKind.Absolute, out uriResult) &&
+                    (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
                 {
                     if (TabControl.SelectedTab != null)
                     {
@@ -703,12 +750,8 @@ namespace Browser
 
             if (isValidUrl)
             {
-                // Check if the URL is valid and navigate
-                if (
-                    uriResult.Scheme == Uri.UriSchemeHttp
-                    || uriResult.Scheme == Uri.UriSchemeHttps
-                    || uriResult.Scheme == Uri.UriSchemeFile
-                )
+                // Handle HTTP(S) or file URLs
+                if (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps || uriResult.Scheme == Uri.UriSchemeFile)
                 {
                     if (TabControl.SelectedTab != null)
                     {
@@ -723,28 +766,25 @@ namespace Browser
             }
             else
             {
-                // Build the search URL based on the selected search engine
+                // If not a URL, perform a search using the default engine
                 string searchUrl;
                 switch (DefaultEngine.ToLower())
                 {
                     case "bing":
-                        searchUrl =
-                            $"https://www.bing.com/search?q={Uri.EscapeDataString(searchText)}";
+                        searchUrl = $"https://www.bing.com/search?q={Uri.EscapeDataString(searchText)}";
                         break;
                     case "duckduckgo":
                         searchUrl = $"https://duckduckgo.com/?q={Uri.EscapeDataString(searchText)}";
                         break;
                     case "yahoo":
-                        searchUrl =
-                            $"https://search.yahoo.com/search?p={Uri.EscapeDataString(searchText)}";
+                        searchUrl = $"https://search.yahoo.com/search?p={Uri.EscapeDataString(searchText)}";
                         break;
                     case "brave":
                         searchUrl = $"https://search.brave.com/search?q={Uri.EscapeDataString(searchText)}";
                         break;
                     case "google":
                     default:
-                        searchUrl =
-                            $"https://www.google.com/search?q={Uri.EscapeDataString(searchText)}";
+                        searchUrl = $"https://www.google.com/search?q={Uri.EscapeDataString(searchText)}";
                         break;
                 }
 
@@ -755,6 +795,8 @@ namespace Browser
                 }
             }
         }
+
+
 
         private bool IsDomain(string input)
         {
@@ -776,7 +818,6 @@ namespace Browser
 
             Tab newTab = new Tab
             {
-                Title = title,
                 WebView = newWebView,
                 Id = tabId,
             };
@@ -817,47 +858,72 @@ namespace Browser
 
         private async void UpdateTabOnNavigation(Tab tab)
         {
-            string settingsHtmlPath = Path.Combine(
-                Application.StartupPath,
-                "./src/settings/settings.html"
-            );
+            string settingsHtmlPath = Path.Combine(Application.StartupPath, "./src/settings/settings.html");
             settingsHtmlPath = new Uri(settingsHtmlPath).ToString();
+
             await WaitForWebViewInitialization(tab.WebView);
-            tab.WebView.CoreWebView2.DocumentTitleChanged += async (s, e) =>
-            {
-                tab.Title = tab.WebView.CoreWebView2.DocumentTitle;
-                UpdateTabInterface();
-                string source = tab.WebView.CoreWebView2.Source;
-                tab.Source = source;
-                if (source == settingsHtmlPath)
-                {
-                    source = "browser://settings";
-                }
 
-                await InterfaceWebView.ExecuteScriptAsync(
-                    $"UpdateTabTitle('{tab.Id}', '{tab.Title}', '{source}');"
-                );
-            };
-
-            tab.Title = tab.WebView.CoreWebView2.DocumentTitle;
             tab.Source = tab.WebView.CoreWebView2.Source;
-            UpdateTabInterface();
-            string source2 = tab.WebView.CoreWebView2.Source;
-            if (source2 == settingsHtmlPath)
-            {
-                source2 = "browser://settings";
-            }
-            await InterfaceWebView.ExecuteScriptAsync(
-                $"UpdateTabTitle('{tab.Id}', '{tab.Title}', '{source2}');"
-            );
 
-            SearchHistory.Insert(0, source2 + " - " + DateTime.Now);
+            string source = tab.WebView.CoreWebView2.Source;
+            if (source == settingsHtmlPath)
+            {
+                source = "browser://settings";
+            }
+            SearchHistory.Insert(0, source + " - " + DateTime.Now);
+
+            void OnSourceChanged(object sender, EventArgs e)
+            {
+                UpdateSource(tab, settingsHtmlPath, true);
+            }
+
+            void OnDocumentTitleChanged(object sender, object e)
+            {
+                UpdateSource(tab, settingsHtmlPath, false);
+            }
+
+            tab.WebView.CoreWebView2.DocumentTitleChanged += OnDocumentTitleChanged;
+            tab.WebView.CoreWebView2.SourceChanged += OnSourceChanged;
+
+            UpdateTabInterface();
 
             if (SearchHistory.Count > 1000)
             {
                 SearchHistory.RemoveAt(SearchHistory.Count - 1);
             }
+
+            InjectPlugins(tab.WebView.CoreWebView2);
             SaveSearchHistory();
+        }
+        private void UpdateSource(Tab tab, string settingsHtmlPath, bool injectplugins)
+        {
+            string source = tab.WebView.CoreWebView2.Source;
+            if (source == settingsHtmlPath)
+            {
+                source = "browser://settings";
+            }
+            tab.Source = source;
+            UpdateTabInterface();
+            if (injectplugins)
+            {
+                InjectPlugins(tab.WebView.CoreWebView2);
+            }
+        }
+        void InjectPlugins(CoreWebView2 TabView)
+        {
+            foreach (string PluginPath in Plugins)
+            {
+                try
+                {
+                    Console.WriteLine("Plugin Injected: " + PluginPath);
+                    string Plugin = File.ReadAllText(PluginPath);
+                    TabView.ExecuteScriptAsync(Plugin);
+                }
+                catch
+                {
+
+                }
+            }
         }
 
         private async Task WaitForWebViewInitialization(WebView2 webView)
@@ -875,10 +941,10 @@ namespace Browser
                 if (((Tab)tabPage.Tag).Id == tabId)
                 {
                     TabControl.SelectedTab = tabPage as TabPage;
-                    UpdateTabInterface();
-                    return;
+                    break;
                 }
             }
+            UpdateTabInterface();
         }
 
         private void CloseTab(string tabId)
@@ -894,6 +960,7 @@ namespace Browser
                 {
                     if (((Tab)tabPage.Tag).Id == tabId)
                     {
+                        ExecuteScript($"RemoveTab('{tabId}');");
                         TabControl.TabPages.Remove(tabPage as TabPage);
                         UpdateTabInterface();
                         break;
@@ -943,13 +1010,10 @@ namespace Browser
 
         private void UpdateTabInterface()
         {
-            ExecuteScript("ClearTabs();");
-
             foreach (Tab tab in Tabs)
             {
-                ExecuteScript($"AddTab('{tab.Title}', '{tab.Id}');");
+                ExecuteScript($"AddTab('{tab.Id}');");
             }
-
             Tab selectedTab = (Tab)TabControl.SelectedTab?.Tag;
 
             if (selectedTab != null)
@@ -960,32 +1024,71 @@ namespace Browser
                     Application.StartupPath,
                     "./src/settings/settings.html"
                 );
+
+                string title;
+                string rawtitle;
+                try
+                {
+                    title = SanitizeString(selectedTab.WebView.CoreWebView2.DocumentTitle);
+                    rawtitle = selectedTab.WebView.CoreWebView2.DocumentTitle;
+                }
+                catch
+                {
+                    title = selectedTab.Source;
+                    rawtitle = selectedTab.Source;
+                }
+                if (string.IsNullOrEmpty(title) || title == "")
+                {
+                    title = selectedTab.Source;
+                    rawtitle = selectedTab.Source;
+                }
+
+                Console.WriteLine("Info: " + selectedTab.Source + ", " +  selectedTab.Id + ", " + (selectedTab.WebView.CoreWebView2 == null));
+
+                    // Determine if the selected tab is the settings page
                 if (selectedTab.Source == new Uri(settingsHtmlPath).ToString())
                 {
                     ExecuteScript(
-                        $"UpdateTabTitle('{selectedTab.Id}', '{selectedTab.Title}', '{"browser://settings"}');"
+                        $"UpdateTabTitle('{selectedTab.Id}', 'Settings', 'browser://settings');"
                     );
                 }
                 else
                 {
-                    ExecuteScript(
-                        $"UpdateTabTitle('{selectedTab.Id}', '{selectedTab.Title}', '{selectedTab.Source}');"
-                    );
+                    ExecuteScript($"UpdateTabTitle('{selectedTab.Id}', '{title}', '{selectedTab.Source}');");
                 }
-                try
-                {
-                    this.Text =
-                        BrowserName + " - " + selectedTab.WebView.CoreWebView2.DocumentTitle;
-                }
-                catch { }
+                this.Text = BrowserName + " - " + rawtitle;
             }
         }
 
-        private void ExecuteScript(string script)
+        public static string SanitizeString(string input)
+        {
+            // Escape special characters for JavaScript string
+            if (input == null) return string.Empty;
+
+            return input
+                .Replace("\\", "\\\\")
+                .Replace("'", "\\'")
+                .Replace("\"", "\\\"")
+                .Replace("\n", "\\n")
+                .Replace("\r", "\\r") 
+                .Replace("\t", "\\t")
+                .Replace("\b", "\\b") 
+                .Replace("\f", "\\f");
+        }
+
+
+        private async void ExecuteScript(string script)
         {
             if (IsWebViewInitialized)
             {
-                InterfaceWebView.CoreWebView2.ExecuteScriptAsync(script);
+                    try
+                    {
+                        await InterfaceWebView.CoreWebView2.ExecuteScriptAsync(script);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error executing script: {ex.Message}");
+                    }
             }
             else
             {
@@ -993,13 +1096,18 @@ namespace Browser
             }
         }
 
-        private void ProcessScriptQueue()
+
+
+
+        private async void ProcessScriptQueue()
         {
             while (ScriptQueue.Count > 0)
             {
-                ScriptQueue.Dequeue().Invoke();
+                var scriptAction = ScriptQueue.Dequeue();
+                await Task.Run(scriptAction);
             }
         }
+
 
         public void PageManager_Load(object sender, EventArgs e) { }
 
@@ -1039,29 +1147,18 @@ namespace Browser
         // Override the FormClosing event to perform cleanup
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            // Hide the application
             this.Hide();
-
-            // Dispose of the WebView2 control if it's not null
             if (InterfaceWebView != null)
             {
-                InterfaceWebView.Dispose(); // Dispose of WebView2 to release its resources
-                InterfaceWebView = null; // Set to null to avoid further access
+                InterfaceWebView.Dispose();
+                InterfaceWebView = null;
             }
-
-            // Dispose of all WebView2 instances in the Tabs list
             foreach (Tab tab in Tabs)
             {
                 tab.WebView.Dispose();
             }
-
-            // Dispose of the TabControl
             TabControl.Dispose();
-
-            // Unhook the global keyboard hook
             _globalKeyboardHook.Unhook();
-
-            // Perform cleanup of the temporary directory
             Task.Delay(1000).Wait();
             CleanupTempDirectory(tempUserDataFolder);
 
